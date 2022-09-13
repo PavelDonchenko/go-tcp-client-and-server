@@ -15,8 +15,8 @@ func main() {
 		return
 	}
 
-	CONNECT := arguments[1]
-	c, err := net.Dial("tcp", CONNECT)
+	connect := arguments[1]
+	c, err := net.Dial("tcp", connect)
 	if err != nil {
 		fmt.Println(err)
 		return
