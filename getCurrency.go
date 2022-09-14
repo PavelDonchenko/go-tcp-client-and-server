@@ -20,7 +20,6 @@ type Envelope struct {
 func GetCurrency() Envelope {
 	// get the latest exchange rate
 	resp, err := http.Get("http://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml")
-
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -28,17 +27,16 @@ func GetCurrency() Envelope {
 	defer resp.Body.Close()
 
 	xmlCurrenciesData, err := ioutil.ReadAll(resp.Body)
-
 	if err != nil {
 		fmt.Println(err)
 	}
 
 	var env Envelope
 	err = xml.Unmarshal(xmlCurrenciesData, &env)
-
 	if err != nil {
 		fmt.Println(err)
 	}
+
 	currency := env
 	return currency
 }

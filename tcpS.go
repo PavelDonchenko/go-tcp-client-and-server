@@ -44,16 +44,13 @@ func main() {
 
 		currTime := GetCurrency().Cube[0].Date
 		rates := GetCurrency().Cube[0].Rates
-		clientReq := strings.TrimSpace(string(netData))
+		clientReq := strings.TrimSpace(netData)
 		fmt.Println(currTime, rates)
 
 		for _, rate := range rates {
 			if rate.Currency == strings.ToUpper(clientReq) {
-				c.Write([]byte(currTime + "  "))
-				c.Write([]byte("1 EURO = " + rate.Rate))
+				c.Write([]byte(currTime + " 1 EURO = " + rate.Rate + strings.ToUpper(netData)))
 			}
-
 		}
-		c.Write([]byte(strings.ToUpper(netData)))
 	}
 }

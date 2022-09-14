@@ -24,7 +24,6 @@ type Envelope2 struct {
 func GetCurrency2() Envelope2 {
 	// get the latest exchange rate
 	resp, err := http.Get("http://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml")
-
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -32,14 +31,13 @@ func GetCurrency2() Envelope2 {
 	defer resp.Body.Close()
 
 	xmlCurrenciesData, err := ioutil.ReadAll(resp.Body)
-
 	if err != nil {
 		fmt.Println(err)
 	}
 
 	var env Envelope2
-	err = xml.Unmarshal(xmlCurrenciesData, &env)
 
+	err = xml.Unmarshal(xmlCurrenciesData, &env)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -87,15 +85,14 @@ func handleConnection(c net.Conn) {
 		}
 		currTime := GetCurrency2().Cube[0].Date
 		rates := GetCurrency2().Cube[0].Rates
-		clientReq := strings.TrimSpace(string(netData))
+		clientReq := strings.TrimSpace(netData)
 
 		for _, rate := range rates {
 			if rate.Currency == strings.ToUpper(clientReq) {
-				c.Write([]byte(currTime + "  "))
-				c.Write([]byte("1 EURO = " + rate.Rate))
+				c.Write([]byte(currTime + " 1 EURO = " + rate.Rate + strings.ToUpper(netData)))
 			}
 		}
-		c.Write([]byte(strings.ToUpper(netData)))
 	}
 	c.Close()
+
 }
