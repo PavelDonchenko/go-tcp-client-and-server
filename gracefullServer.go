@@ -5,12 +5,18 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
+	"sync"
+	"syscall"
+	"time"
 )
 
-type Envelope2 struct {
+type Envelope3 struct {
 	Cube []struct {
 		Date  string `xml:"time,attr"`
 		Rates []struct {
@@ -20,7 +26,8 @@ type Envelope2 struct {
 	} `xml:"Cube>Cube"`
 }
 
-func GetCurrency2() Envelope2 {
+func GetCurrency3() Envelope3 {
+	// get the latest exchange rate
 	resp, err := http.Get("http://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml")
 	if err != nil {
 		fmt.Println(err)
@@ -33,7 +40,7 @@ func GetCurrency2() Envelope2 {
 		fmt.Println(err)
 	}
 
-	var env Envelope2
+	var env Envelope3
 
 	err = xml.Unmarshal(xmlCurrenciesData, &env)
 	if err != nil {
@@ -42,25 +49,46 @@ func GetCurrency2() Envelope2 {
 	currency := env
 	return currency
 }
-func main() {
-	l, err := net.Listen("tcp4", ":6666")
+func NewServer() {
+	cmdAddr, _ := net.ResolveTCPAddr("tcp", "localhost:6666")
+	lcmd, err := net.ListenTCP("tcp", cmdAddr)
 	if err != nil {
-		fmt.Println(err)
-		return
+		log.Fatalln(err)
 	}
-	defer l.Close()
+	defer lcmd.Close()
 
+	quitChan := make(chan os.Signal, 1)
+	signal.Notify(quitChan, os.Interrupt, os.Kill, syscall.SIGTERM)
+	wg := sync.WaitGroup{}
 	for {
-		c, err := l.Accept()
-		if err != nil {
-			fmt.Println(err)
+		select {
+		case <-quitChan:
+			lcmd.Close()
+			wg.Wait()
 			return
+		default:
 		}
-		go handleConnection(c)
-	}
+		lcmd.SetDeadline(time.Now().Add(1e9))
+		c, err := lcmd.AcceptTCP()
+		if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
+			continue
+		}
+		if err != nil {
+			//log.WithError(err).Errorln("Listener accept")
+			continue
+		}
+		wg.Add(1)
+		go func() {
+			wg.Done()
+			handleConnection5(c)
+		}()
 
+	}
 }
-func handleConnection(c net.Conn) {
+func main() {
+	NewServer()
+}
+func handleConnection5(c net.Conn) {
 	fmt.Print(".")
 	for {
 		netData, err := bufio.NewReader(c).ReadString('\n')
@@ -73,8 +101,8 @@ func handleConnection(c net.Conn) {
 		if temp == "STOP" {
 			break
 		}
-		currTime := GetCurrency2().Cube[0].Date
-		rates := GetCurrency2().Cube[0].Rates
+		currTime := GetCurrency3().Cube[0].Date
+		rates := GetCurrency3().Cube[0].Rates
 		clientReq := strings.TrimSpace(netData)
 
 		for _, rate := range rates {
