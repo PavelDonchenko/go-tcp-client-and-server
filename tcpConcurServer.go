@@ -2,13 +2,17 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"sync"
+	"syscall"
 )
 
 type Envelope2 struct {
@@ -61,14 +65,31 @@ func main() {
 	}
 	defer l.Close()
 
-	for {
-		c, err := l.Accept()
-		if err != nil {
-			fmt.Println(err)
-			return
+	_, cancel := context.WithCancel(context.Background())
+	go func() {
+		exit := make(chan os.Signal, 1)
+		signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
+		<-exit
+		cancel()
+	}()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+		for {
+			c, err := l.Accept()
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			go handleConnection(c)
 		}
-		go handleConnection(c)
-	}
+	}()
+
+	wg.Wait()
+	fmt.Println("Main done")
 }
 func handleConnection(c net.Conn) {
 	fmt.Print(".")
